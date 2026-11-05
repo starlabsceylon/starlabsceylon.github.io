@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Friend List Cleaner: bulk-remove Facebook friends, safely</title>
+<meta name="description" content="A Chrome extension by Star Labs Ceylon that removes Facebook friends in bulk: select by click, drag or mutual-friend count, review, then remove one at a time with safe pacing.">
+<meta property="og:title" content="Friend List Cleaner">
+<meta property="og:description" content="Clean up your Facebook friends list in minutes, with safe pacing and a review before anything is removed.">
+<meta property="og:image" content="icon-512.png">
+<link rel="icon" href="icons/icon32.png">
+<style>
+  :root {
+    --bg: #f6f8fc; --surface: #ffffff; --text: #14171c; --muted: #5b6370; --line: #e3e7ef; --soft: #eef3fd;
+    --brand-1: #0fb0ff; --brand-2: #4f5bff; --grad: linear-gradient(90deg, var(--brand-1), var(--brand-2));
+    --shadow: 0 10px 30px rgba(20, 40, 90, .08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111317; --surface: #1b1e24; --text: #e8eaee; --muted: #a3a9b4; --line: #2c3038; --soft: #1f2532; --shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+  nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  nav .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; }
+  .brand img { width: 32px; height: 32px; }
+  nav .links { margin-left: auto; display: flex; gap: 22px; font-size: 15px; }
+  nav .links a { text-decoration: none; color: var(--muted); }
+  nav .links a:hover { color: var(--text); }
+  @media (max-width: 640px) { nav .links { display: none; } }
+
+  .hero { padding: 64px 0 40px; display: grid; grid-template-columns: 1.05fr 1fr; gap: 44px; align-items: center; }
+  @media (max-width: 900px) { .hero { grid-template-columns: 1fr; padding-top: 40px; } }
+  .eyebrow { display: inline-block; font-size: 13px; font-weight: 600; color: var(--brand-2); background: var(--soft); padding: 4px 12px; border-radius: 999px; margin-bottom: 14px; }
+  h1 { font-size: clamp(32px, 5vw, 50px); line-height: 1.1; margin: 0 0 16px; letter-spacing: -.02em; }
+  h1 span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { font-size: 18px; color: var(--muted); margin: 0 0 26px; max-width: 34em; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); background: var(--surface); }
+  .btn.primary { background: var(--grad); color: #fff; border: 0; box-shadow: 0 6px 18px rgba(79, 91, 255, .3); }
+  .btn.soon { cursor: default; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+  .shot { border-radius: 14px; border: 1px solid var(--line); box-shadow: var(--shadow); width: 100%; height: auto; display: block; }
+
+  section { padding: 56px 0; }
+  h2 { font-size: clamp(26px, 3.4vw, 34px); margin: 0 0 10px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 32px; max-width: 40em; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .features { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .features { grid-template-columns: 1fr; } }
+  .feature { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  .feature .ic { width: 38px; height: 38px; border-radius: 10px; background: var(--soft); display: grid; place-items: center; margin-bottom: 12px; }
+  .feature .ic svg { width: 20px; height: 20px; stroke: var(--brand-2); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .feature h3 { margin: 0 0 6px; font-size: 17px; }
+  .feature p { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 800px) { .gallery { grid-template-columns: 1fr; } }
+  .gallery figure { margin: 0; }
+  .gallery figcaption { color: var(--muted); font-size: 14px; margin-top: 8px; }
+
+  .pricing { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; max-width: 820px; }
+  @media (max-width: 700px) { .pricing { grid-template-columns: 1fr; } }
+  .plan { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 26px; display: flex; flex-direction: column; }
+  .plan.pro { border: 2px solid transparent; background: linear-gradient(var(--surface), var(--surface)) padding-box, var(--grad) border-box; box-shadow: var(--shadow); }
+  .plan h3 { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .price { font-size: 38px; font-weight: 800; margin: 6px 0 2px; }
+  .price small { font-size: 15px; font-weight: 500; color: var(--muted); }
+  .plan ul { padding-left: 20px; margin: 14px 0 20px; color: var(--muted); flex: 1; }
+  .plan li { margin: 6px 0; }
+  .plan .btn { justify-content: center; }
+
+  .faq { max-width: 820px; }
+  details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { color: var(--muted); margin: 10px 0 0; }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; }
+  footer .legal { flex-basis: 100%; font-size: 13px; }
+</style>
+</head>
+<body>
+<nav>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="icons/icon32.png" alt="">Friend List Cleaner</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</nav>
+
+<main>
+  <div class="wrap hero">
+    <div>
+      <span class="eyebrow">Chrome extension by Star Labs Ceylon</span>
+      <h1>Clean up your Facebook friends list <span>in minutes</span></h1>
+      <p class="lead">Select friends by click, drag or mutual-friend count, check the list, and let Friend List Cleaner remove them one at a time, slowly enough to keep your account safe.</p>
+      <div class="ctas">
+        <span class="btn primary soon" aria-disabled="true">Coming soon to the Chrome Web Store</span>
+        <a class="btn" href="#pricing">See pricing</a>
+      </div>
+      <p class="note">Free to use. Pro is a one-time purchase.</p>
+    </div>
+    <img class="shot" src="img/screenshot-1-selected.png" width="1280" height="800" alt="Friend List Cleaner panel on a Facebook friends list with several friends selected (names and photos blurred)">
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>Everything you need, nothing you don't</h2>
+      <p class="sub">Removing hundreds of friends by hand takes hours of clicking. Friend List Cleaner does the clicking for you, carefully.</p>
+      <div class="features">
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M15 17.5l2 2 4-4"/></svg></div>
+          <h3>Select in seconds</h3>
+          <p>Tick friends, click their cards, drag a box across many at once, or pick everyone with fewer than N mutual friends.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></svg></div>
+          <h3>Review before removing</h3>
+          <p>See the full list of names first. Nothing happens until you confirm.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <h3>Careful pacing</h3>
+          <p>Random pauses between friends, a longer break every 20, and a daily limit, to stay under Facebook's radar.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg></div>
+          <h3>Stops on warnings</h3>
+          <p>If Facebook shows a warning, or something doesn't look right, the extension stops by itself.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div>
+          <h3>Private by design</h3>
+          <p>Runs only when you click its icon. Your Facebook data never leaves your computer: no analytics, no tracking.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><circle cx="12" cy="12" r="9"/></svg></div>
+          <h3>Keep who matters</h3>
+          <p>Un-tick a friend once and "Select all" leaves them alone. A stop button works at any time.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>See it in action</h2>
+      <p class="sub">Names and photos are blurred in these screenshots.</p>
+      <div class="gallery">
+        <figure><img class="shot" src="img/screenshot-1-selected.png" width="1280" height="800" alt="Several friends selected" loading="lazy"><figcaption>Select many friends at once</figcaption></figure>
+        <figure><img class="shot" src="img/screenshot-2-selection.png" width="1280" height="800" alt="Some friends selected, others kept" loading="lazy"><figcaption>Keep the ones you want</figcaption></figure>
+        <figure><img class="shot" src="img/screenshot-3-review.png" width="1280" height="800" alt="Review dialog listing who will be removed" loading="lazy"><figcaption>Review before anything is removed</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="wrap">
+      <h2>Simple pricing</h2>
+      <p class="sub">Every feature is free. Pro lets you remove more friends a day.</p>
+      <div class="pricing">
+        <div class="plan">
+          <h3>Free</h3>
+          <div class="price">$0</div>
+          <ul>
+            <li>All selection tools</li>
+            <li>Review list before removing</li>
+            <li>Safe pacing and automatic stop</li>
+            <li>Up to <b>25</b> removals a day</li>
+          </ul>
+          <span class="btn soon" aria-disabled="true">Coming soon</span>
+        </div>
+        <div class="plan pro">
+          <h3>Pro</h3>
+          <div class="price">$6.99 <small>one-time</small></div>
+          <ul>
+            <li>Everything in Free</li>
+            <li>Up to <b>200</b> removals a day, our recommended limit</li>
+            <li>Go higher if you choose, at your own risk</li>
+            <li>Use on up to 3 computers</li>
+            <li>Refund within 14 days if it doesn't work for you</li>
+          </ul>
+          <span class="btn primary soon" aria-disabled="true">Buy inside the extension</span>
+        </div>
+      </div>
+      <p class="note">Payments are handled by Lemon Squeezy, our merchant of record. See the <a href="terms.html">Terms of Use</a> for refund details.</p>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap faq">
+      <h2>Questions</h2>
+      <details>
+        <summary>Can Facebook block my account?</summary>
+        <p>Facebook limits how fast accounts can do some actions and doesn't publish those limits. Friend List Cleaner removes friends slowly, with random pauses and a daily limit, and stops if Facebook shows a warning. That lowers the risk a lot, but no tool can remove it completely.</p>
+      </details>
+      <details>
+        <summary>Does it read or send my Facebook data?</summary>
+        <p>It reads what's on your friends list only so it can show checkboxes and the review list. Nothing about your friends leaves your computer. See the <a href="privacy.html">Privacy Policy</a>.</p>
+      </details>
+      <details>
+        <summary>Can I undo a removal?</summary>
+        <p>No. Removing a friend is permanent, which is why the extension shows you the full list before it starts. You can send a new friend request afterwards.</p>
+      </details>
+      <details>
+        <summary>Which languages does it support?</summary>
+        <p>It works best with Facebook set to English. Other languages are being added.</p>
+      </details>
+      <details>
+        <summary>How do I get Pro?</summary>
+        <p>Click "Get Pro" in the extension's panel. You pay once through Lemon Squeezy and receive a license key by email. Paste it into the extension and Pro turns on straight away.</p>
+      </details>
+      <details>
+        <summary>Is this made by Facebook?</summary>
+        <p>No. Friend List Cleaner is made by Star Labs Ceylon and is not affiliated with Meta.</p>
+      </details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Star Labs Ceylon</span>
+    <a href="mailto:starlabsceylon@gmail.com">starlabsceylon@gmail.com</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="terms.html">Terms of Use</a>
+    <span class="legal">Friend List Cleaner is not affiliated with, endorsed by or sponsored by Meta Platforms, Inc. Facebook is a trademark of Meta Platforms, Inc.</span>
+  </div>
+</footer>
+</body>
+</html>
